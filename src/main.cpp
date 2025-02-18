@@ -1,4 +1,7 @@
 #include <ArduinoBLE.h>
+#include <Wire.h>
+#include <Adafruit_TMP117.h>
+#include <Adafruit_Sensor.h>
 
 #define BLINK_INTERVAL 500
 #define STREAM_INTERVAL 200
@@ -12,6 +15,8 @@ BLEIntCharacteristic dataCharacteristic("fff2", BLERead | BLENotify); // "Channe
 BLEStringCharacteristic commandCharacteristic("fff1", BLEWrite, 32);  // "Channel" explicitely for retrieving commands from central
 String deviceName;
 bool streaming = false;
+
+Adafruit_TMP117  tmp117;
 
 unsigned long streamingStartTimestamp = 0;
 
@@ -130,11 +135,21 @@ void setup()
   while (!Serial)
     ;
 
+    if (!tmp117.begin()) {
+      Serial.println("Failed to find TMP117 chip");
+      while (1) { delay(10); }
+    }
+
   initializeBLE();
 }
 
 void loop()
 {
+  sensors_event_t temp; // create an empty event to be filled
+  tmp117.getEvent(&temp); //fill the empty event object with the current measurements
+  Serial.print("Temperature  "); Serial.print(temp.temperature);Serial.println(" degrees C");
+  Serial.println("");
+  
   BLEDevice lCentral = BLE.central();
 
   if (lCentral)
