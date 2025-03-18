@@ -16,11 +16,10 @@ BLEStringCharacteristic commandCharacteristic("fff1", BLEWrite, 32);  // "Channe
 String deviceName;
 bool streaming = false;
 
-Adafruit_TMP117  tmp117;
+Adafruit_TMP117 tmp117;
 
 unsigned long streamingStartTimestamp = 0;
 
-unsigned long lastSendTimestamp = 0;
 unsigned long lastBlinkTimestamp = 0;
 
 String getMACSuffix()
@@ -60,15 +59,13 @@ void setStream(bool pStreaming)
 
 void generateValueStream()
 {
-  if (millis() - lastSendTimestamp > STREAM_INTERVAL)
+
+  sensors_event_t lTemp;   // create an empty event to be filled
+  tmp117.getEvent(&lTemp); // fill the empty event object with the current measurements
+  dataCharacteristic.writeValue((int)(lTemp.temperature * 100));
+  if (millis() - streamingStartTimestamp > STREAM_TIMOUT)
   {
-    lastSendTimestamp = millis();
-    float randomTemperature = 36.0 + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (37.5 - 36.0)));
-    dataCharacteristic.writeValue((int)(randomTemperature * 100));
-    if (millis() - streamingStartTimestamp > STREAM_TIMOUT)
-    {
-      setStream(false);
-    }
+    setStream(false);
   }
 }
 
@@ -102,7 +99,8 @@ void handleConnection(BLEDevice pCentral)
   Serial.print("Connected to app: ");
   Serial.println(pCentral.address());
 
-  while (pCentral.connected()) {
+  while (pCentral.connected())
+  {
     BLE.poll();
 
     if (commandCharacteristic.written())
@@ -131,25 +129,25 @@ void handleConnection(BLEDevice pCentral)
 void setup()
 {
   Serial.begin(9600);
-  pinMode(LED_BUILTIN_PIN,OUTPUT);
+  pinMode(LED_BUILTIN_PIN, OUTPUT);
   while (!Serial)
     ;
 
-    if (!tmp117.begin()) {
-      Serial.println("Failed to find TMP117 chip");
-      while (1) { delay(10); }
+  if (!tmp117.begin())
+  {
+    Serial.println("Failed to find TMP117 chip");
+    while (1)
+    {
+      delay(10);
     }
+  }
 
   initializeBLE();
 }
 
 void loop()
 {
-  sensors_event_t temp; // create an empty event to be filled
-  tmp117.getEvent(&temp); //fill the empty event object with the current measurements
-  Serial.print("Temperature  "); Serial.print(temp.temperature);Serial.println(" degrees C");
-  Serial.println("");
-  
+
   BLEDevice lCentral = BLE.central();
 
   if (lCentral)
